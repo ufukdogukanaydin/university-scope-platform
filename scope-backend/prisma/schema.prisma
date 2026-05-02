@@ -1,0 +1,206 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum ProjectStatus {
+  DRAFT
+  PENDING_ADVISOR
+  ADVISOR_ASSIGNED
+  IN_PROGRESS
+  REVIEW_PHASE
+  COMPLETED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String
+  role      Role       @default(STUDENT)
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Profile Extensions (1-to-1)
+  studentProfile StudentProfile?
+  advisorProfile AdvisorProfile?
+
+  // Relations
+  ownedProjects   Project[]            @relation("ProjectOwner")
+  advisedProjects Project[]            @relation("ProjectAdvisor")
+  teamMemberships TeamMember[]
+  teamAds         TeamAd[]             @relation("TeamAdAuthor")
+  applications    ProjectApplication[]
+  advisorRequests AdvisorRequest[]
+}
+
+model StudentProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  year            String?  // e.g. "3rd Year"
+  department      String?
+  bio             String?  @db.Text
+  education       String?
+  linkedinUrl     String?
+  githubUrl       String?
+  
+  technicalSkills String[] // Stored as array of strings
+  interests       String[] // Stored as array of strings
+}
+
+model AdvisorProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title             String?  // e.g. "Associate Professor"
+  department        String?
+  isAvailable       Boolean  @default(true)
+  
+  expertise         String[]
+  researchInterests String[]
+  previousProjects  String[]
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique // e.g. TÜBİTAK, Teknofest, Course
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  title          String
+  description    String        @db.Text
+  budget         String?       // Kept as string to match "15,000 TL" format
+  requiredSkills String[]
+  status         ProjectStatus @default(PENDING_ADVISOR)
+  
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id])
+  
+  ownerId        String
+  owner          User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  
+  advisorId      String?
+  advisor        User?         @relation("ProjectAdvisor", fields: [advisorId], references: [id])
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // 1-to-many and many-to-many mappings
+  teamMembers     TeamMember[]
+  teamAd          TeamAd?
+  advisorRequests AdvisorRequest[]
+  applications    ProjectApplication[]
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      String   // e.g. "Project Lead", "Frontend Developer"
+  joinedAt  DateTime @default(now())
+
+  // A user can only be a team member of the same project once
+  @@unique([projectId, userId])
+}
+
+model TeamAd {
+  id              String   @id @default(uuid())
+  projectId       String   @unique
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title           String
+  description     String   @db.Text
+  fullDescription String?  @db.Text
+  projectType     String?  // Can map closely to Category
+  
+  technicalSkills String[]
+  interests       String[]
+  
+  authorId        String
+  author          User     @relation("TeamAdAuthor", fields: [authorId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProjectApplication {
+  id             String            @id @default(uuid())
+  projectId      String
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  studentId      String
+  student        User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  requestedRoles String[]          // They can apply for multiple roles at once
+  status         ApplicationStatus @default(PENDING)
+  appliedAt      DateTime          @default(now())
+
+  // A student can apply to a project only once
+  @@unique([projectId, studentId])
+}
+
+model AdvisorRequest {
+  id        String            @id @default(uuid())
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  advisorId String
+  advisor   User              @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  
+  status    ApplicationStatus @default(PENDING)
+  message   String?           @db.Text
+  createdAt DateTime          @default(now())
+
+  @@unique([projectId, advisorId])
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  category  String   // e.g. "TÜBİTAK", "Teknofest", "Course", "General"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+}
