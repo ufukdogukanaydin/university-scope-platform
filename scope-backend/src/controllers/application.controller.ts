@@ -5,7 +5,13 @@ import { prisma } from '../prisma/client';
 export const applyForProject = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
+    const userRole = req.user!.role;
     const { projectId, requestedRoles } = req.body;
+
+    if (userRole !== 'STUDENT') {
+      res.status(403).json({ error: 'Only students can apply to projects' });
+      return;
+    }
 
     if (!projectId || !requestedRoles || requestedRoles.length === 0) {
       res.status(400).json({ error: 'Project ID and requested roles are required' });
@@ -20,6 +26,16 @@ export const applyForProject = async (req: AuthRequest, res: Response): Promise<
 
     if (project.ownerId === userId) {
       res.status(400).json({ error: 'You cannot apply to your own project' });
+      return;
+    }
+
+    // Ensure student is not already a member of ANY project (1 Student = 1 Project rule)
+    const existingMembership = await prisma.teamMember.findFirst({
+      where: { userId }
+    });
+
+    if (existingMembership) {
+      res.status(400).json({ error: 'You are already a member of a project' });
       return;
     }
 
@@ -79,6 +95,25 @@ export const respondToApplication = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    if (status === 'ACCEPTED') {
+      const currentMembers = await prisma.teamMember.count({
+        where: { projectId: application.projectId }
+      });
+      if (currentMembers >= 4) {
+        res.status(400).json({ error: 'Project has reached its maximum capacity of 4 members' });
+        return;
+      }
+
+      // Ensure student hasn't joined another project while this application was pending
+      const studentMembership = await prisma.teamMember.findFirst({
+        where: { userId: application.studentId }
+      });
+      if (studentMembership) {
+        res.status(400).json({ error: 'Student is already a member of another project' });
+        return;
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       // Update application status
       await tx.projectApplication.update({
@@ -95,6 +130,16 @@ export const respondToApplication = async (req: AuthRequest, res: Response): Pro
             userId: application.studentId,
             role: role
           }
+        });
+
+        // 1 Student = 1 Project Rule: Reject other pending applications
+        await tx.projectApplication.updateMany({
+          where: {
+            studentId: application.studentId,
+            status: 'PENDING',
+            id: { not: applicationId }
+          },
+          data: { status: 'REJECTED' }
         });
       }
     });

@@ -87,7 +87,12 @@ export const getMyProjects = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const userId = req.user!.userId;
     const projects = await prisma.project.findMany({
-      where: { ownerId: userId },
+      where: {
+        OR: [
+          { ownerId: userId },
+          { teamMembers: { some: { userId: userId } } }
+        ]
+      },
       include: {
         category: true,
         advisor: { select: { name: true } },
