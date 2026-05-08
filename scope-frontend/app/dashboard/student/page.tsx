@@ -97,7 +97,10 @@ export default function StudentMyHub() {
               className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[60px] p-10 hover:bg-white/15 transition-all duration-500 ease-in-out"
               style={{
                 maxHeight: isExpanded ? "1000px" : "320px",
-                overflow: "hidden"
+                overflow: "hidden",
+                transitionProperty: "max-height",
+                transitionDuration: "500ms",
+                transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)"
               }}
             >
               {/* Category Badge */}
@@ -121,8 +124,11 @@ export default function StudentMyHub() {
 
               {/* View Details Button */}
               <button
+                type="button"
                 onClick={() => toggleExpand(item.id)}
-                className="flex items-center space-x-2 px-6 py-3 bg-white/90 hover:bg-white text-gray-900 rounded-full font-semibold transition-all shadow-lg hover:shadow-xl cursor-pointer"
+                className="flex items-center space-x-2 px-6 py-3 bg-white/90 hover:bg-white text-gray-900 rounded-full font-semibold transition-all shadow-lg hover:shadow-xl"
+                aria-expanded={isExpanded}
+                aria-label={isExpanded ? "Show less details" : "Show more details"}
               >
                 {isExpanded ? (
                   <>

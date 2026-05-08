@@ -29,17 +29,7 @@ export const applyForProject = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    // Ensure student is not already a member of ANY project (1 Student = 1 Project rule)
-    const existingMembership = await prisma.teamMember.findFirst({
-      where: { userId }
-    });
-
-    if (existingMembership) {
-      res.status(400).json({ error: 'You are already a member of a project' });
-      return;
-    }
-
-    // Prevent duplicate applications
+    // Prevent duplicate applications to the exact same project
     const existingApp = await prisma.projectApplication.findUnique({
       where: { projectId_studentId: { projectId, studentId: userId } }
     });
@@ -104,12 +94,12 @@ export const respondToApplication = async (req: AuthRequest, res: Response): Pro
         return;
       }
 
-      // Ensure student hasn't joined another project while this application was pending
+      // 1 Student = 1 Project: block acceptance if student is already an active team member
       const studentMembership = await prisma.teamMember.findFirst({
         where: { userId: application.studentId }
       });
       if (studentMembership) {
-        res.status(400).json({ error: 'Student is already a member of another project' });
+        res.status(400).json({ error: 'Student has already been accepted to another project' });
         return;
       }
     }
