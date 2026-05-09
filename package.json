@@ -1,0 +1,26 @@
+{
+  "name": "university-scope-platform",
+  "version": "1.0.0",
+  "description": "A secure and scalable university project management platform built with Next.js, Node.js, Prisma, and PostgreSQL. Features robust business logic (1:1 Project Participation), zero-trust security layers, and automated integration testing.",
+  "main": "index.js",
+  "scripts": {
+    "dev:backend": "cd scope-backend && npm run dev",
+    "dev:frontend": "cd scope-frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/velatsoydan/university-scope-platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/velatsoydan/university-scope-platform/issues"
+  },
+  "homepage": "https://github.com/velatsoydan/university-scope-platform#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
