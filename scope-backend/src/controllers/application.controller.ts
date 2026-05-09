@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { prisma } from '../prisma/client';
 
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 export const applyForProject = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
@@ -104,7 +106,7 @@ export const respondToApplication = async (req: AuthRequest, res: Response): Pro
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: TxClient) => {
       // Update application status
       await tx.projectApplication.update({
         where: { id: applicationId },
