@@ -102,3 +102,22 @@ export const toggleUserStatus = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({ error: 'Failed to toggle user status' });
   }
 };
+
+export const updateCategory = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { categoryId } = req.params;
+    const { name } = req.body;
+    if (!name) {
+      res.status(400).json({ error: 'Category name is required' });
+      return;
+    }
+    const category = await prisma.category.update({
+      where: { id: categoryId },
+      data: { name }
+    });
+    res.status(200).json({ message: 'Category updated', category });
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ error: 'Failed to update category' });
+  }
+};

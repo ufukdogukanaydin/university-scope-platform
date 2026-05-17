@@ -68,6 +68,30 @@ export default function LoginRoleSelect() {
             Mentor teams and guide projects
           </p>
         </Link>
+
+        {/* Admin Card */}
+        <Link
+          href="/login/admin"
+          id="role-admin"
+          className="group flex flex-1 flex-col items-center justify-center rounded-3xl bg-white/[0.07] backdrop-blur-lg border border-white/[0.1] px-8 py-14 text-center transition-all duration-300 hover:bg-white/[0.12] hover:border-white/[0.2] hover:scale-[1.02]"
+        >
+          {/* Admin/shield icon */}
+          <svg
+            className="mb-6 h-16 w-16 text-white/80 transition-colors group-hover:text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h2 className="mb-2 text-2xl font-bold text-white sm:text-3xl">
+            As Admin
+          </h2>
+          <p className="text-sm text-white/50 sm:text-base">
+            System Administration
+          </p>
+        </Link>
       </div>
 
       {/* Back to Home */}

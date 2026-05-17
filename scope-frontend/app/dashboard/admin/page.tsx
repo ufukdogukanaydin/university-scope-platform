@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Users, FolderKanban, BarChart3, LogOut, Plus, Search, X, Award, ChevronDown, Activity, TrendingUp, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { Users, FolderKanban, BarChart3, LogOut, Plus, Search, X, Award, ChevronDown, Activity, TrendingUp, CheckCircle, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast, Toaster } from "sonner";
 
 interface Announcement {
@@ -42,12 +42,23 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<"All" | "Student" | "Advisor">("All");
   const [filterCategory, setFilterCategory] = useState<"All" | "TÜBİTAK" | "Teknofest" | "Course">("All");
   const [newCategoryName, setNewCategoryName] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
+    if (!token || role !== "ADMIN") {
+      router.push("/login/admin");
+    }
+  }, [router]);
 
   // Stats
   const stats = {
@@ -215,6 +226,47 @@ export default function AdminDashboard() {
       duration: 4000,
       className: "bg-blue-500/90 backdrop-blur-xl text-white border-blue-400/50"
     });
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !editCategoryName) {
+      toast.error("Please enter a category name");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/categories/${currentCategoryId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ name: editCategoryName }),
+      });
+      
+      const currentCategoryId = editingCategory.id;
+      setCategories(categories.map(c => c.id === currentCategoryId ? { ...c, name: editCategoryName } : c));
+      setShowEditCategoryModal(false);
+      setEditingCategory(null);
+      setEditCategoryName("");
+      
+      if (res.ok) {
+        toast.success("Category Updated!", {
+          duration: 3000,
+          className: "bg-blue-500/90 backdrop-blur-xl text-white border-blue-400/50"
+        });
+      } else {
+        toast.success("Category Updated (Local Only)", {
+          description: "Could not sync with backend.",
+          duration: 3000,
+          className: "bg-yellow-500/90 backdrop-blur-xl text-white border-yellow-400/50"
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update category");
+    }
   };
 
   return (
@@ -529,18 +581,30 @@ export default function AdminDashboard() {
                     <h3 className="text-lg font-bold text-white mb-1">{category.name}</h3>
                     <p className="text-white/40 text-xs">{category.createdDate}</p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setCategories(categories.filter(c => c.id !== category.id));
-                      toast.success("Category Deleted!", {
-                        duration: 3000,
-                        className: "bg-red-500/90 backdrop-blur-xl text-white border-red-400/50"
-                      });
-                    }}
-                    className="w-8 h-8 bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <X className="w-4 h-4 text-red-300" strokeWidth={2} />
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setEditingCategory(category);
+                        setEditCategoryName(category.name);
+                        setShowEditCategoryModal(true);
+                      }}
+                      className="w-8 h-8 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <Pencil className="w-4 h-4 text-blue-300" strokeWidth={2} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCategories(categories.filter(c => c.id !== category.id));
+                        toast.success("Category Deleted!", {
+                          duration: 3000,
+                          className: "bg-red-500/90 backdrop-blur-xl text-white border-red-400/50"
+                        });
+                      }}
+                      className="w-8 h-8 bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <X className="w-4 h-4 text-red-300" strokeWidth={2} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -654,6 +718,59 @@ export default function AdminDashboard() {
               </button>
               <button
                 onClick={() => setShowCategoryModal(false)}
+                className="flex-1 px-8 py-5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-[30px] font-bold text-lg transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {showEditCategoryModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6 animate-fadeIn">
+          <div className="bg-white/15 backdrop-blur-2xl rounded-[60px] border border-white/30 p-12 max-w-2xl w-full shadow-2xl animate-slideUp">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-bold text-white">Edit Category</h2>
+              <button
+                onClick={() => {
+                  setShowEditCategoryModal(false);
+                  setEditingCategory(null);
+                  setEditCategoryName("");
+                }}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/20"
+              >
+                <X className="w-6 h-6 text-white" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-white/80 text-sm font-semibold mb-2">Category Name</label>
+                <input
+                  type="text"
+                  value={editCategoryName}
+                  onChange={(e) => setEditCategoryName(e.target.value)}
+                  className="w-full px-6 py-4 bg-white/10 border border-white/20 rounded-[30px] text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
+                  placeholder="Enter new category name"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={handleUpdateCategory}
+                className="flex-1 px-8 py-5 bg-blue-500/30 hover:bg-blue-500/40 border border-blue-400/50 text-blue-200 rounded-[30px] font-bold text-lg transition-all"
+              >
+                Update Category
+              </button>
+              <button
+                onClick={() => {
+                  setShowEditCategoryModal(false);
+                  setEditingCategory(null);
+                  setEditCategoryName("");
+                }}
                 className="flex-1 px-8 py-5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-[30px] font-bold text-lg transition-all"
               >
                 Cancel
